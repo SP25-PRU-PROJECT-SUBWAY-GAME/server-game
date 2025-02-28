@@ -8,6 +8,17 @@ const app = express();
 app.use(express.json());
 app.use(bodyParser.json());
 
+/*
+ name : register
+ route: /users/register
+ method: post
+ body : {name: string, email: string, password : string}
+*/
+
+app.get("/", (req, res) => {
+	res.send("Hello word!");
+});
+
 app.post(
 	"/users/register",
 	body("email")
@@ -43,6 +54,13 @@ app.post(
 	}
 );
 
+/*
+ name : login
+ route: /users/login
+ method: post
+ body : { email: string, password : string}
+*/
+
 app.post(
 	"/users/login",
 	body("email").notEmpty().isEmail(),
@@ -54,6 +72,18 @@ app.post(
 				where: {
 					email,
 					password,
+				},
+				select: {
+					id: true,
+					name: true,
+					fish: true,
+					currentHatIndex: true,
+					highScore: true,
+					hats: {
+						select: {
+							hatId: true,
+						},
+					},
 				},
 			});
 			if (!user) {
@@ -71,16 +101,18 @@ app.post(
 			return res.json({
 				message: "Login success",
 				token,
-				user: {
-					username: user.name,
-				},
+				user: user,
 			});
 		} catch (error) {
 			console.log(error);
 		}
 	}
 );
-
+/*
+ name : get question random
+ route: /question/random
+ method: get
+*/
 app.get("/question/random", async (req, res) => {
 	const listQuestion = await prisma.question.findMany({
 		select: {
@@ -100,6 +132,78 @@ app.get("/question/random", async (req, res) => {
 	return res.json({
 		message: "Get question success",
 		question: listQuestion[random],
+	});
+});
+
+app.post("/users/save/:id", async (req, res) => {
+	const { id } = req.params;
+	const { fish, currentHatIndex, highScore } = req.body;
+
+	const user = await prisma.user.update({
+		where: {
+			id,
+		},
+		data: {
+			fish,
+			currentHatIndex,
+			highScore,
+		},
+		select: {
+			id: true,
+			name: true,
+			fish: true,
+			currentHatIndex: true,
+			highScore: true,
+			hats: {
+				select: {
+					hatId: true,
+				},
+			},
+		},
+	});
+	return user;
+});
+
+app.post("/users/buy", async (req, res) => {
+	const { fish, hatId, userId } = req.body;
+	const user = await prisma.user.findFirst({
+		where: {
+			id,
+		},
+	});
+
+	const [updateUser, newHat] = await Promise.all([
+		prisma.user.update({
+			where: {
+				id: user.id,
+			},
+			data: {
+				fish: user.fish - fish,
+			},
+			select: {
+				id: true,
+				name: true,
+				fish: true,
+				currentHatIndex: true,
+				highScore: true,
+				hats: {
+					select: {
+						hatId: true,
+					},
+				},
+			},
+		}),
+		prisma.hat.create({
+			data: {
+				userId,
+				hatId,
+			},
+		}),
+	]);
+
+	return res.json({
+		message: "Buy hat success",
+		user: updateUser,
 	});
 });
 

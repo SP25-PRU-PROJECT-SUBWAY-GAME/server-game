@@ -16,6 +16,11 @@ model User {
   email    String   @unique
   name     String
   password String
+  lastTimeSave DateTime @default(now())
+  fish    Int       @default(0)
+  currentHatIndex Int @default(0)
+  highScore Int    @default(0)
+  hats Hat[]
 }
 
 model Question {
@@ -32,4 +37,11 @@ model Answer {
   question  Question @relation(fields: [questionId], references: [id])
   questionId String
   isCorrect Boolean
+}
+
+model Hat {
+  id        String   @id @default(uuid())
+  hatId     Int
+  userId    String
+  user     User     @relation(fields: [userId], references: [id])
 }
